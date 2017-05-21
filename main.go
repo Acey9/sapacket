@@ -79,11 +79,11 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		return
 	}
 
-	if pkt.Type != packet.LOGIN || pkt.Body != this.Token {
+	if pkt.Type != packet.LOGIN || string(pkt.Body) != this.Token {
 		return
 	}
 
-	succ := packet.Pack(packet.LOGINSUCC, "")
+	succ := packet.Pack(packet.LOGINSUCC, []byte(""))
 	conn.SetDeadline(time.Now().Add(60 * time.Second))
 	err = packet.WritePacket(conn, succ)
 	if err != nil {
