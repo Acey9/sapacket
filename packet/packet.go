@@ -10,6 +10,8 @@ import (
 const (
 	OTHER = iota
 	PACKET
+	LOGIN
+	LOGINSUCC
 )
 
 type Pkt struct {

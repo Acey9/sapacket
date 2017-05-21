@@ -25,6 +25,7 @@ type Sapacket struct {
 	ListenPort uint16
 	CertFile   string
 	KeyFile    string
+	Token      string
 	Logging    *logp.Logging
 }
 
@@ -56,7 +57,7 @@ func (this *Sapacket) start() {
 			fmt.Println(err)
 			break
 		}
-		logp.Info("client jion: %s", conn.RemoteAddr())
+
 		go this.initHandler(conn)
 	}
 	fmt.Println("Stopped accepting data")
@@ -72,9 +73,30 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		conn.Close()
 	}()
 
+	conn.SetDeadline(time.Now().Add(60 * time.Second))
+	pkt, err := packet.ReadPacket(conn)
+	if err != nil {
+		return
+	}
+
+	if pkt.Type != packet.LOGIN || pkt.Body != this.Token {
+		return
+	}
+
+	succ := packet.Pack(packet.LOGINSUCC, "")
+	conn.SetDeadline(time.Now().Add(60 * time.Second))
+	err = packet.WritePacket(conn, succ)
+	if err != nil {
+		logp.Err("%s response err: %v", conn.RemoteAddr(), err)
+		return
+	}
+
+	logp.Info("client join: %s", conn.RemoteAddr())
+
 	for {
+
 		conn.SetDeadline(time.Now().Add(900 * time.Second))
-		pkt, err := packet.ReadPacket(conn)
+		pkt, err = packet.ReadPacket(conn)
 		if err != nil {
 			logp.Err("%s read pkt err: %v", conn.RemoteAddr(), err)
 			return
@@ -110,7 +132,8 @@ func optParse() {
 	var port uint
 
 	flag.StringVar(&spacket.ListenIP, "b", "0.0.0.0", "Listen address")
-	flag.UintVar(&port, "p", 15444, "Listen port")
+	flag.UintVar(&port, "p", 5444, "Listen port")
+	flag.StringVar(&spacket.Token, "a", "", "auth token")
 
 	flag.StringVar(&logging.Level, "l", "info", "logging level")
 	flag.StringVar(&fileRotator.Path, "lp", "", "log path")
@@ -131,7 +154,7 @@ func optParse() {
 
 	spacket.ListenPort = uint16(port)
 
-	if spacket.CertFile == "" || spacket.KeyFile == "" {
+	if spacket.CertFile == "" || spacket.KeyFile == "" || spacket.Token == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
