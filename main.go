@@ -91,7 +91,6 @@ func optParse() {
 
 	flag.StringVar(&spacket.ListenIP, "b", "0.0.0.0", "Listen address")
 	flag.UintVar(&port, "p", 15444, "Listen port")
-	spacket.ListenPort = uint16(port)
 
 	flag.StringVar(&logging.Level, "l", "info", "logging level")
 	flag.StringVar(&fileRotator.Path, "lp", "", "log path")
@@ -109,6 +108,8 @@ func optParse() {
 		fmt.Println(version)
 		os.Exit(0)
 	}
+
+	spacket.ListenPort = uint16(port)
 
 	if spacket.CertFile == "" || spacket.KeyFile == "" {
 		flag.Usage()
