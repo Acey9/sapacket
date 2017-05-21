@@ -27,6 +27,7 @@ type Sapacket struct {
 	KeyFile    string
 	Token      string
 	Logging    *logp.Logging
+	Timeout    uint16
 }
 
 func (this *Sapacket) sayHi() {
@@ -83,7 +84,10 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		return
 	}
 
-	succ := packet.Pack(packet.LOGINSUCC, []byte(""))
+	succ, err := packet.Pack(packet.LOGINSUCC, []byte(""))
+	if err != nil {
+		return
+	}
 	conn.SetDeadline(time.Now().Add(60 * time.Second))
 	err = packet.WritePacket(conn, succ)
 	if err != nil {
@@ -95,7 +99,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 
 	for {
 
-		conn.SetDeadline(time.Now().Add(900 * time.Second))
+		conn.SetDeadline(time.Now().Add(time.Duration(this.Timeout) * time.Second))
 		pkt, err = packet.ReadPacket(conn)
 		if err != nil {
 			logp.Err("%s read pkt err: %v", conn.RemoteAddr(), err)
@@ -114,7 +118,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		r, err := zlib.NewReader(&in)
 		if err != nil {
 			logp.Err("decode error: %v", err)
-			continue
+			return
 		}
 		io.Copy(&out, r)
 		r.Close()
@@ -130,6 +134,7 @@ func optParse() {
 	var rotateEveryKB uint64
 	var keepFiles int
 	var port uint
+	var timeout int
 
 	flag.StringVar(&spacket.ListenIP, "b", "0.0.0.0", "Listen address")
 	flag.UintVar(&port, "p", 5444, "Listen port")
@@ -140,6 +145,8 @@ func optParse() {
 	flag.StringVar(&fileRotator.Name, "n", "sapacket.log", "log name")
 	flag.Uint64Var(&rotateEveryKB, "r", 10240, "rotate every KB")
 	flag.IntVar(&keepFiles, "k", 7, "number of keep files")
+
+	flag.IntVar(&timeout, "t", 900, "the client connection timed out. unit is second")
 
 	flag.StringVar(&spacket.CertFile, "cf", "", "X509 cert file")
 	flag.StringVar(&spacket.KeyFile, "kf", "", "X509 key file")
@@ -153,6 +160,7 @@ func optParse() {
 	}
 
 	spacket.ListenPort = uint16(port)
+	spacket.Timeout = uint16(timeout)
 
 	if spacket.CertFile == "" || spacket.KeyFile == "" || spacket.Token == "" {
 		flag.Usage()
@@ -180,5 +188,5 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	spacket.sayHi()
 	spacket.start()
-	fmt.Println("vim-go")
+
 }
