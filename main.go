@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Acey9/apacket/logp"
+	"github.com/Acey9/sapacket/packet"
 	"net"
 	"os"
 	"runtime"
@@ -69,12 +70,12 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 
 	for {
 		conn.SetDeadline(time.Now().Add(180 * time.Second))
-		pkt, err := ReadPacket(conn)
+		pkt, err := packet.ReadPacket(conn)
 		if err != nil {
 			logp.Err("%s read pkt err: %v", conn.RemoteAddr(), err)
 			return
 		}
-		if pkt.Type != PACKET {
+		if pkt.Type != packet.PACKET {
 			logp.Err("%s pkt type", conn.RemoteAddr())
 			return
 		}
