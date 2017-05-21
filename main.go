@@ -54,6 +54,7 @@ func (this *Sapacket) start() {
 			fmt.Println(err)
 			break
 		}
+		logp.Info("client jion: %s", conn.RemoteAddr())
 		go this.initHandler(conn)
 	}
 	fmt.Println("Stopped accepting data")
@@ -69,7 +70,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 	}()
 
 	for {
-		conn.SetDeadline(time.Now().Add(180 * time.Second))
+		conn.SetDeadline(time.Now().Add(900 * time.Second))
 		pkt, err := packet.ReadPacket(conn)
 		if err != nil {
 			logp.Err("%s read pkt err: %v", conn.RemoteAddr(), err)
