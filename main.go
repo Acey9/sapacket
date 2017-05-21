@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"compress/zlib"
 	"crypto/tls"
 	"flag"
 	"fmt"
 	"github.com/Acey9/apacket/logp"
 	"github.com/Acey9/sapacket/packet"
+	"io"
 	"net"
 	"os"
 	"runtime"
@@ -14,7 +16,7 @@ import (
 	"time"
 )
 
-const version = "0.1"
+const version = "1.0"
 
 var spacket Sapacket
 
@@ -81,7 +83,22 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 			logp.Err("%s pkt type", conn.RemoteAddr())
 			return
 		}
-		logp.Info("pkt %s", pkt.Body)
+
+		var out bytes.Buffer
+		var in bytes.Buffer
+
+		in.Write([]byte(pkt.Body))
+
+		r, err := zlib.NewReader(&in)
+		if err != nil {
+			logp.Err("decode error: %v", err)
+			continue
+		}
+		io.Copy(&out, r)
+		r.Close()
+
+		//fmt.Println(len(pkt.Body), len(out.String()))
+		logp.Info("pkt %s", out.String())
 	}
 }
 
