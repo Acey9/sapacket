@@ -66,6 +66,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		if err := recover(); err != nil {
 			logp.Err("%v", err)
 		}
+		logp.Info("client lost: %s", conn.RemoteAddr())
 		conn.Close()
 	}()
 
