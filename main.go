@@ -70,7 +70,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		if err := recover(); err != nil {
 			logp.Err("%v", err)
 		}
-		logp.Info("client lost: %s", conn.RemoteAddr())
+		logp.Info("client %s lost", conn.RemoteAddr())
 		conn.Close()
 	}()
 
@@ -91,22 +91,22 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 	conn.SetDeadline(time.Now().Add(60 * time.Second))
 	err = packet.WritePacket(conn, succ)
 	if err != nil {
-		logp.Err("%s response err: %v", conn.RemoteAddr(), err)
+		logp.Err("client %s login err [%v]", conn.RemoteAddr(), err)
 		return
 	}
 
-	logp.Info("client join: %s", conn.RemoteAddr())
+	logp.Info("client %s join", conn.RemoteAddr())
 
 	for {
 
 		conn.SetDeadline(time.Now().Add(time.Duration(this.Timeout) * time.Second))
 		pkt, err = packet.ReadPacket(conn)
 		if err != nil {
-			logp.Err("%s read pkt err: %v", conn.RemoteAddr(), err)
+			logp.Err("client %s info [%v]", conn.RemoteAddr(), err)
 			return
 		}
 		if pkt.Type != packet.PACKET {
-			logp.Err("%s pkt type", conn.RemoteAddr())
+			logp.Err("client %s error pkt type", conn.RemoteAddr())
 			return
 		}
 
@@ -117,7 +117,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 
 		r, err := zlib.NewReader(&in)
 		if err != nil {
-			logp.Err("decode error: %v", err)
+			logp.Err("decode error [%v]", err)
 			return
 		}
 		io.Copy(&out, r)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	//"fmt"
+	//"github.com/Acey9/apacket/logp"
 )
 
 const (
@@ -80,8 +81,10 @@ func ReadPacket(conn net.Conn) (*Pkt, error) {
 	if err != nil || uint16(n) != headLen {
 		return nil, err
 	}
+	//logp.Debug("packet", "ReadPacket.len: %d", n)
 
 	pktLen := binary.BigEndian.Uint16(head[0:2])
+	//logp.Debug("packet", "pktLen: %d", pktLen)
 
 	buf := make([]byte, pktLen)
 	bufPos := headLen
@@ -89,8 +92,16 @@ func ReadPacket(conn net.Conn) (*Pkt, error) {
 	buf[1] = head[1]
 	buf[2] = head[2]
 
+	ptype := buf[2]
+
+	//logp.Debug("packet", "packet.type: %v", ptype)
+	if ptype != PACKET && ptype != LOGIN && ptype != LOGINSUCC {
+		return nil, errors.New("pkt type error")
+	}
+
 	last_len := pktLen - headLen
 	for {
+		//logp.Debug("packet", "bufPos: %d\tlast_len: %d", bufPos, last_len)
 		n, err := conn.Read(buf[bufPos : bufPos+last_len])
 		if err != nil {
 			return nil, err
@@ -101,6 +112,7 @@ func ReadPacket(conn net.Conn) (*Pkt, error) {
 			break
 		}
 	}
+	//logp.Debug("packet", "ReadPacket.len: %d", n)
 	return Unpack(buf), nil
 }
 
