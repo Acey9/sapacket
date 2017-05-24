@@ -16,6 +16,8 @@ const (
 	LOGINSUCC
 )
 
+const MAXPKTLEN = 65535
+
 type Pkt struct {
 	Len  uint16
 	Type uint8
@@ -26,7 +28,7 @@ func (pkt *Pkt) pack() ([]byte, error) {
 	_body := pkt.Body
 	_len := len(_body) + 3
 
-	if _len > 65535 {
+	if _len > MAXPKTLEN {
 		err := errors.New("packet length exceeds the maximum")
 		return nil, err
 	}
@@ -85,6 +87,10 @@ func ReadPacket(conn net.Conn) (*Pkt, error) {
 
 	pktLen := binary.BigEndian.Uint16(head[0:2])
 	//logp.Debug("packet", "pktLen: %d", pktLen)
+	if pktLen > MAXPKTLEN {
+		err := errors.New("packet length exceeds the maximum")
+		return nil, err
+	}
 
 	buf := make([]byte, pktLen)
 	bufPos := headLen
