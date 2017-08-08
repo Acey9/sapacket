@@ -1,10 +1,10 @@
 NAME?=sapacket
 
 all:
-	go build -o $(NAME) *.go
-
-release:
 	go build -ldflags "-s -w"  -o $(NAME) *.go
+
+debug:
+	go build -o $(NAME) *.go
 
 .PHONY: clean
 clean:
