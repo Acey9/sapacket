@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"net"
 	//"fmt"
 	//"github.com/Acey9/apacket/logp"
+	"net"
 )
 
 const (
@@ -14,19 +14,20 @@ const (
 	PACKET
 	LOGIN
 	LOGINSUCC
+	HEARTBEAT
 )
 
-const MAXPKTLEN = 65535
+const MAXPKTLEN = 1024 * 1024 * 4
 
 type Pkt struct {
-	Len  uint16
+	Len  uint32
 	Type uint8
 	Body []byte
 }
 
 func (pkt *Pkt) pack() ([]byte, error) {
 	_body := pkt.Body
-	_len := len(_body) + 3
+	_len := uint32(len(_body) + 5)
 
 	if _len > MAXPKTLEN {
 		err := errors.New("packet length exceeds the maximum")
@@ -34,7 +35,7 @@ func (pkt *Pkt) pack() ([]byte, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, uint16(_len))
+	binary.Write(buf, binary.BigEndian, uint32(_len))
 	binary.Write(buf, binary.BigEndian, pkt.Type)
 	binary.Write(buf, binary.BigEndian, _body)
 
@@ -51,9 +52,9 @@ func Pack(_type uint8, body []byte) ([]byte, error) {
 }
 
 func Unpack(buf []byte) *Pkt {
-	_len := binary.BigEndian.Uint16(buf[0:2])
-	_type := uint8(buf[2])
-	body := buf[3:]
+	_len := binary.BigEndian.Uint32(buf[0:4])
+	_type := uint8(buf[4])
+	body := buf[5:]
 	return &Pkt{_len, _type, body}
 }
 
@@ -77,15 +78,15 @@ func WritePacket(conn net.Conn, buf []byte) error {
 
 func ReadPacket(conn net.Conn) (*Pkt, error) {
 
-	headLen := uint16(3)
+	headLen := uint32(5)
 	head := make([]byte, headLen)
 	n, err := conn.Read(head)
-	if err != nil || uint16(n) != headLen {
+	if err != nil || uint32(n) != headLen {
 		return nil, err
 	}
 	//logp.Debug("packet", "ReadPacket.len: %d", n)
 
-	pktLen := binary.BigEndian.Uint16(head[0:2])
+	pktLen := binary.BigEndian.Uint32(head[0:4])
 	//logp.Debug("packet", "pktLen: %d", pktLen)
 	if pktLen > MAXPKTLEN {
 		err := errors.New("packet length exceeds the maximum")
@@ -97,11 +98,13 @@ func ReadPacket(conn net.Conn) (*Pkt, error) {
 	buf[0] = head[0]
 	buf[1] = head[1]
 	buf[2] = head[2]
+	buf[3] = head[3]
+	buf[4] = head[4]
 
-	ptype := buf[2]
+	ptype := buf[4]
 
 	//logp.Debug("packet", "packet.type: %v", ptype)
-	if ptype != PACKET && ptype != LOGIN && ptype != LOGINSUCC {
+	if ptype != PACKET && ptype != HEARTBEAT && ptype != LOGIN && ptype != LOGINSUCC {
 		return nil, errors.New("pkt type error")
 	}
 
@@ -112,8 +115,8 @@ func ReadPacket(conn net.Conn) (*Pkt, error) {
 		if err != nil {
 			return nil, err
 		}
-		bufPos += uint16(n)
-		last_len -= uint16(n)
+		bufPos += uint32(n)
+		last_len -= uint32(n)
 		if last_len <= 0 {
 			break
 		}

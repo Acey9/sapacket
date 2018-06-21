@@ -77,6 +77,7 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 	conn.SetDeadline(time.Now().Add(60 * time.Second))
 	pkt, err := packet.ReadPacket(conn)
 	if err != nil {
+		//logp.Err("packet.ReadPacket.err:%v", err)
 		return
 	}
 
@@ -105,6 +106,12 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 			logp.Err("client %s info [%v]", conn.RemoteAddr(), err)
 			return
 		}
+
+		if pkt.Type == packet.HEARTBEAT {
+			logp.Debug("heartbeat", "heartbeat received.")
+			continue
+		}
+
 		if pkt.Type != packet.PACKET {
 			logp.Err("client %s error pkt type", conn.RemoteAddr())
 			return
