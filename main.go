@@ -7,12 +7,15 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Acey9/apacket/logp"
+	"github.com/Acey9/sapacket/outputer"
 	"github.com/Acey9/sapacket/packet"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,6 +31,7 @@ type Sapacket struct {
 	Token      string
 	Logging    *logp.Logging
 	Timeout    uint16
+	Outputer   outputer.Outputer
 }
 
 func (this *Sapacket) sayHi() {
@@ -131,7 +135,9 @@ func (this *Sapacket) initHandler(conn net.Conn) {
 		r.Close()
 
 		//fmt.Println(len(pkt.Body), len(out.String()))
-		logp.Info("pkt %s", out.String())
+		//logp.Info("pkt %s", out.String())
+		this.Outputer.Output(out.String())
+
 	}
 }
 
@@ -142,10 +148,12 @@ func optParse() {
 	var keepFiles int
 	var port uint
 	var timeout int
+	var outputAddr string
 
 	flag.StringVar(&spacket.ListenIP, "b", "0.0.0.0", "Listen address")
 	flag.UintVar(&port, "p", 5444, "Listen port")
 	flag.StringVar(&spacket.Token, "a", "", "auth token")
+	flag.StringVar(&outputAddr, "o", "", "output log t")
 
 	flag.StringVar(&logging.Level, "l", "info", "logging level")
 	flag.StringVar(&fileRotator.Path, "lp", "", "log path")
@@ -184,11 +192,47 @@ func optParse() {
 		logging.Files.KeepFiles = &keepFiles
 	}
 	spacket.Logging = &logging
+	logp.Init("sapacket", spacket.Logging)
+
+	if outputAddr != "" {
+		URL, err := url.Parse(outputAddr)
+		if err != nil {
+			logp.Err("%v", err)
+			os.Exit(1)
+		}
+
+		path := strings.Trim(URL.Path, "/")
+		switch URL.Scheme {
+		case "kafka":
+			topic := path
+			spacket.Outputer = outputer.NewKafka(URL.Host, topic)
+			logp.Info("outputer: %v://%v/%v", URL.Scheme, URL.Host, topic)
+		case "redis":
+			pwd, _ := URL.User.Password()
+			db, err := strconv.Atoi(path)
+			if err != nil {
+				logp.Err("%v", err)
+				os.Exit(1)
+			}
+			q := URL.Query()
+			key := q.Get("key")
+			if key == "" {
+				logp.Err("have no reids key")
+				os.Exit(1)
+			}
+			spacket.Outputer = outputer.NewRedis(URL.Host, pwd, db, key)
+			logp.Info("outputer: %v://:%v@%v/%v key=%v", URL.Scheme, "*", URL.Host, db, key)
+		default:
+			spacket.Outputer = &outputer.Logger{}
+		}
+	} else {
+		spacket.Outputer = &outputer.Logger{}
+	}
+
 }
 
 func init() {
 	optParse()
-	logp.Init("sapacket", spacket.Logging)
 }
 
 func main() {
