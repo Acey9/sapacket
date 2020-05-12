@@ -7,10 +7,10 @@ import (
 
 func NewKafka(broker, topic string) Outputer {
 	conf := &kafka.ConfigMap{
-		"bootstrap.servers": broker,
-		//"broker.version.fallback": version,
-		//"api.version.request":     false,
-		"retries": 8,
+		"bootstrap.servers":       broker,
+		"broker.version.fallback": "0.9.0.1",
+		"api.version.request":     false,
+		"retries":                 8,
 	}
 	p, err := kafka.NewProducer(conf)
 	if err != nil {
